@@ -3,16 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Argumentative Essay Feedback Tool</title>
+    <title>Argumentative Essay Coach</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
     <style>
         body {
             font-family: 'Inter', sans-serif;
             background-color: #A2D2FF;
-            color: #00203D; /* Dark blue for text */
+            color: #D6EBFF;
             display: flex;
             justify-content: center;
             align-items: flex-start;
@@ -21,6 +19,7 @@
             margin: 0;
             line-height: 1.6;
         }
+
         .container {
             background-color: #ffffff;
             border-radius: 16px;
@@ -28,69 +27,172 @@
             padding: 2.5rem;
             max-width: 800px;
             width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
         }
-        #essayInput {
+
+        h1 {
+            font-weight: 600;
+            font-size: 2.25rem;
+            text-align: center;
+            color: #0288d1;
+        }
+
+        .input-container, .accordion-item, .essay-output-container {
             background-color: #EBF5FF;
-            color: #00203D;
+            border-radius: 12px;
+            padding: 1.5rem;
+        }
+
+        .input-container {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        #essay-input, #points-input {
+            width: 100%;
+            padding: 0.75rem;
+            border-radius: 8px;
             border: 1px solid #b3e5fc;
+            background-color: #ffffff;
+            color: #00203D;
+            min-height: 200px;
             transition: all 0.3s ease;
         }
-        #essayInput:focus {
+
+        #essay-input:focus, #points-input:focus {
             border-color: #0288d1;
             box-shadow: 0 0 0 3px rgba(2, 136, 209, 0.2);
             outline: none;
         }
-        #analyzeButton {
+
+        .button {
             background-color: #0288d1;
             color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 9999px;
+            font-weight: 600;
+            cursor: pointer;
             transition: background-color 0.3s ease, transform 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            width: 100%;
         }
-        #analyzeButton:hover {
+
+        .button:hover {
             background-color: #01579b;
             transform: translateY(-2px);
+        }
+
+        .essay-output-container {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+            position: relative;
+            animation: fadeIn 0.5s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Accordion styles */
+        .accordion-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 600;
+            cursor: pointer;
+            padding: 0.75rem;
+            border-radius: 8px;
+            background-color: #b3e5fc;
+            color: #01579b;
+        }
+
+        .accordion-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+            padding: 0 0.75rem;
+        }
+
+        .accordion-arrow {
+            transition: transform 0.3s ease;
+        }
+
+        .accordion-arrow.open {
+            transform: rotate(180deg);
+        }
+
+        .accordion-content ul {
+            list-style-type: disc;
+            padding-left: 2rem;
+            margin-top: 0.5rem;
+        }
+        .message-area {
+            display: none;
+            padding: 1rem;
+            border-radius: 12px;
+            text-align: center;
+            font-weight: 500;
+        }
+        .error {
+            background-color: #fee2e2;
+            color: #b91c1c;
+        }
+        .loading-indicator {
+            display: none;
+            text-align: center;
+            color: #01579b;
+            font-weight: 600;
         }
         .trait-card {
             background-color: #EBF5FF;
             border: 1px dashed #42a5f5;
             color: #00203D;
             box-shadow: none;
-            padding: 1.5rem; /* Adjust padding for a cleaner look */
-            transition: transform 0.2s ease;
-        }
-        .trait-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            padding: 1.5rem;
+            border-radius: 12px;
         }
         .trait-stage {
             background-color: #b3e5fc;
             color: #01579b;
             font-weight: 600;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
         }
     </style>
 </head>
-<body class="p-8">
+<body>
 
     <div class="container rounded-2xl shadow-lg p-8 space-y-8">
-        <header class="text-center">
-            <h1 class="text-4xl font-extrabold text-[#0288d1] tracking-tight mb-2">Argumentative Essay Feedback Tool</h1>
-            <p class="text-lg text-[#00203D] opacity-80 italic">Paste your essay below to get a breakdown based on the six traits of quality writing.</p>
+        <header>
+            <h1>Argumentative Essay Coach</h1>
+            <p class="text-center text-[#00203D] opacity-80 italic">Paste your essay below and get an instant evaluation.</p>
         </header>
 
         <main class="space-y-6">
-            <div class="space-y-2">
-                <label for="essayInput" class="block text-xl font-semibold text-[#01579b]">Your Essay</label>
-                <textarea id="essayInput" class="w-full h-80 p-4 rounded-lg shadow-sm resize-y" placeholder="Paste here..."></textarea>
-            </div>
-
-            <div class="flex justify-center">
-                <button id="analyzeButton" class="px-8 py-3 font-bold rounded-full shadow-lg focus:outline-none focus:ring-4 focus:ring-blue-500 focus:ring-opacity-50">
+            <div class="input-container rounded-xl">
+                <div class="flex flex-col gap-2">
+                    <label for="essay-input" class="font-semibold text-[#01579b]">Your Essay</label>
+                    <textarea id="essay-input" placeholder="Paste your essay here..."></textarea>
+                </div>
+                <div class="flex flex-col gap-2">
+                    <label for="points-input" class="font-semibold text-[#01579b]">Key Points (comma-separated)</label>
+                    <textarea id="points-input" placeholder="e.g., Cost-effectiveness, environmental benefits, long-term sustainability"></textarea>
+                </div>
+                <button id="evaluate-button" class="button">
                     Evaluate Essay
                 </button>
             </div>
 
-            <div id="messageArea" class="hidden mt-4 p-4 rounded-xl text-center font-medium bg-red-100 text-red-700"></div>
-
-            <div id="loadingIndicator" class="hidden text-center text-[#01579b] font-semibold text-lg">
+            <div id="messageArea" class="message-area hidden"></div>
+            <div id="loadingIndicator" class="loading-indicator hidden">
                 Analyzing essay...
             </div>
 
@@ -101,14 +203,38 @@
                     <!-- Heuristic results will be dynamically inserted here -->
                 </div>
             </div>
+
+            <!-- Accordion Section -->
+            <div class="flex flex-col gap-4">
+                <div class="accordion-item rounded-xl">
+                    <div class="accordion-header flex justify-between items-center cursor-pointer">
+                        <span>How to Write an Argumentative Essay</span>
+                        <svg class="accordion-arrow w-6 h-6 transform transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                    </div>
+                    <div class="accordion-content">
+                        <ul class="list-disc pl-5 mt-2 text-[#00203D]">
+                            <li>**Introduction:** Hook the reader and state your clear thesis.</li>
+                            <li>**Body Paragraphs:** Present your key points with evidence and analysis. Each paragraph should focus on one point.</li>
+                            <li>**Counterargument:** Acknowledge and refute an opposing viewpoint.</li>
+                            <li>**Conclusion:** Summarize your points and restate your thesis in a new way.</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
         </main>
     </div>
 
     <script>
-        const API_KEY = ""; // Keep this empty
-        const API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=" + API_KEY;
+        const evaluateButton = document.getElementById('evaluate-button');
+        const essayInput = document.getElementById('essay-input');
+        const pointsInput = document.getElementById('points-input');
+        const messageArea = document.getElementById('messageArea');
+        const loadingIndicator = document.getElementById('loadingIndicator');
+        const resultsDiv = document.getElementById('results');
+        const traitResultsDiv = document.getElementById('traitResults');
+        const overallGradeElement = document.getElementById('overallGrade');
 
-const rubric = {
+        const rubric = {
             development: {
                 title: "Overall Development",
                 stages: [
@@ -276,61 +402,22 @@ const rubric = {
             messageArea.style.display = 'block';
         }
 
-        generateButton.addEventListener('click', async () => {
-            const topic = topicInput.value.trim();
-            const points = pointsInput.value.trim();
-            if (!topic || !points) {
-                showMessage('Please enter both a topic and key points to generate an essay.', true);
-                return;
-            }
-            essayTextDiv.textContent = 'Generating essay...';
-            essayOutput.classList.add('show');
-            essayOutput.scroll-into-view({ behavior: 'smooth' });
-            resultsDiv.classList.add('hidden');
-            messageArea.style.display = 'none';
-
-            const userPrompt = `Generate a well-structured argumentative essay on the topic "${topic}" using the following key points: ${points}.`;
-            
-            try {
-                const payload = {
-                    contents: [{ parts: [{ text: userPrompt }] }],
-                };
-                const response = await fetch(API_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-
-                const result = await response.json();
-                const essayText = result.candidates?.[0]?.content?.parts?.[0]?.text;
-                
-                if (essayText) {
-                    essayTextDiv.textContent = essayText;
-                } else {
-                    throw new Error('No essay text was returned from the API.');
-                }
-            } catch (error) {
-                console.error('Error generating essay:', error);
-                essayTextDiv.textContent = 'Failed to generate essay. Please try again.';
-                showMessage('Failed to generate essay. Please try again.', true);
-            }
-        });
-
         evaluateButton.addEventListener('click', () => {
-            const essayText = essayTextDiv.textContent.trim();
+            const essayText = essayInput.value.trim();
             const keyPoints = pointsInput.value.trim();
-            messageArea.style.display = 'none';
 
             if (essayText.length < 50) {
-                showMessage("Please generate a longer essay (at least 50 words) to get a meaningful evaluation.", true);
+                showMessage("Please enter a longer essay (at least 50 words) to get a meaningful evaluation.", true);
+                return;
+            }
+
+            if (!keyPoints) {
+                showMessage("Please enter the key points for a more accurate evaluation.", true);
                 return;
             }
 
             resultsDiv.classList.add('hidden');
+            messageArea.style.display = 'none';
             loadingIndicator.style.display = 'block';
 
             setTimeout(() => {
