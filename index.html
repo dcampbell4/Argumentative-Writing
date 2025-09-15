@@ -108,7 +108,7 @@
         const API_KEY = ""; // Keep this empty
         const API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=" + API_KEY;
 
-        const rubric = {
+const rubric = {
             development: {
                 title: "Overall Development",
                 stages: [
@@ -178,24 +178,27 @@
         };
 
         // Heuristic analysis function
-        function evaluateEssay(essayText) {
+        function evaluateEssay(essayText, keyPoints) {
             const results = {};
             const paragraphs = essayText.split(/\n\s*\n/).filter(p => p.trim() !== '');
             const sentences = essayText.split(/[.!?]\s/).filter(s => s.trim() !== '');
             const words = essayText.toLowerCase().split(/\s+/).filter(w => w !== '');
             const totalWords = words.length;
+            const pointsArray = keyPoints.split(',').map(p => p.trim().toLowerCase());
 
             // --- Heuristic for Development ---
             let developmentStage = 1;
             const hasIntroduction = paragraphs.length > 0 && paragraphs[0].length > 50;
             const hasConclusion = paragraphs.length > 1 && paragraphs[paragraphs.length - 1].length > 50;
             const hasClearThesisKeywords = /(I believe|It is clear that|In my opinion|The primary argument is|The central claim is|This essay will argue)/i.test(essayText);
-            const isFocused = words.length > 200 && (new Set(words).size / totalWords) > 0.4;
+            const hasCounterargument = /(however|on the other hand|while some may argue|conversely|in contrast)/i.test(essayText);
+            const hasAllKeyPoints = pointsArray.every(p => essayText.toLowerCase().includes(p));
+
             if (totalWords > 50) developmentStage = 2;
             if (paragraphs.length > 1 && hasIntroduction) developmentStage = 3;
             if (paragraphs.length >= 3 && hasClearThesisKeywords && hasConclusion) developmentStage = 4;
-            if (isFocused && developmentStage >= 4) developmentStage = 5;
-            if (isFocused && developmentStage === 5 && totalWords > 400) developmentStage = 6;
+            if (hasAllKeyPoints && developmentStage >= 4) developmentStage = 5;
+            if (hasCounterargument && developmentStage >= 5) developmentStage = 6;
             results.development = rubric.development.stages[Math.min(developmentStage, 6) - 1];
 
             // --- Heuristic for Organization ---
@@ -213,12 +216,13 @@
             // --- Heuristic for Support ---
             let supportStage = 1;
             const hasEvidenceKeywords = /(for example|for instance|according to|research shows|a study found|as cited in)/i.test(essayText);
-            const hasNumericalData = /\d+/.test(essayText);
-            if (hasEvidenceKeywords || hasNumericalData) supportStage = 2;
-            if (hasEvidenceKeywords && hasNumericalData) supportStage = 3;
-            if (sentences.some(s => s.includes(" and ") || s.includes(","))) supportStage = 4;
-            if (sentences.some(s => s.includes(" thus ") || s.includes(" therefore "))) supportStage = 5;
-            if (sentences.length > 20 && sentences.some(s => s.length > 30)) supportStage = 6;
+            const hasAnalyticalPhrases = /(this suggests|this demonstrates|as a result|due to|consequently|therefore)/i.test(essayText);
+            const hasAllKeyPointsInText = pointsArray.every(p => essayText.toLowerCase().includes(p));
+            if (hasEvidenceKeywords) supportStage = 2;
+            if (hasEvidenceKeywords && hasAnalyticalPhrases) supportStage = 3;
+            if (hasAllKeyPointsInText) supportStage = 4;
+            if (hasEvidenceKeywords && hasAnalyticalPhrases && hasAllKeyPointsInText) supportStage = 5;
+            if (hasEvidenceKeywords && hasAnalyticalPhrases && hasAllKeyPointsInText && paragraphs.length > 4) supportStage = 6;
             results.support = rubric.support.stages[Math.min(supportStage, 6) - 1];
 
             // --- Heuristic for Sentence Structure ---
@@ -263,39 +267,75 @@
             return results;
         }
 
-        const essayInput = document.getElementById('essayInput');
-        const analyzeButton = document.getElementById('analyzeButton');
-        const loadingIndicator = document.getElementById('loadingIndicator');
-        const resultsDiv = document.getElementById('results');
-        const traitResultsDiv = document.getElementById('traitResults');
-        const messageArea = document.getElementById('messageArea');
-
         function showMessage(text, isError = false) {
             messageArea.textContent = text;
-            messageArea.classList.remove('hidden');
+            messageArea.classList.remove('hidden', 'error');
             if (isError) {
-                messageArea.classList.add('bg-red-100', 'text-red-700');
-                messageArea.classList.remove('bg-green-100', 'text-green-700');
-            } else {
-                messageArea.classList.add('bg-green-100', 'text-green-700');
-                messageArea.classList.remove('bg-red-100', 'text-red-700');
+                messageArea.classList.add('error');
             }
+            messageArea.style.display = 'block';
         }
 
-        analyzeButton.addEventListener('click', () => {
-            const essayText = essayInput.value.trim();
-            messageArea.classList.add('hidden');
+        generateButton.addEventListener('click', async () => {
+            const topic = topicInput.value.trim();
+            const points = pointsInput.value.trim();
+            if (!topic || !points) {
+                showMessage('Please enter both a topic and key points to generate an essay.', true);
+                return;
+            }
+            essayTextDiv.textContent = 'Generating essay...';
+            essayOutput.classList.add('show');
+            essayOutput.scroll-into-view({ behavior: 'smooth' });
+            resultsDiv.classList.add('hidden');
+            messageArea.style.display = 'none';
+
+            const userPrompt = `Generate a well-structured argumentative essay on the topic "${topic}" using the following key points: ${points}.`;
+            
+            try {
+                const payload = {
+                    contents: [{ parts: [{ text: userPrompt }] }],
+                };
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const result = await response.json();
+                const essayText = result.candidates?.[0]?.content?.parts?.[0]?.text;
+                
+                if (essayText) {
+                    essayTextDiv.textContent = essayText;
+                } else {
+                    throw new Error('No essay text was returned from the API.');
+                }
+            } catch (error) {
+                console.error('Error generating essay:', error);
+                essayTextDiv.textContent = 'Failed to generate essay. Please try again.';
+                showMessage('Failed to generate essay. Please try again.', true);
+            }
+        });
+
+        evaluateButton.addEventListener('click', () => {
+            const essayText = essayTextDiv.textContent.trim();
+            const keyPoints = pointsInput.value.trim();
+            messageArea.style.display = 'none';
+
             if (essayText.length < 50) {
-                showMessage("Please enter a longer essay (at least 50 words) to get a meaningful evaluation.", true);
+                showMessage("Please generate a longer essay (at least 50 words) to get a meaningful evaluation.", true);
                 return;
             }
 
             resultsDiv.classList.add('hidden');
-            loadingIndicator.classList.remove('hidden');
+            loadingIndicator.style.display = 'block';
 
             setTimeout(() => {
-                const results = evaluateEssay(essayText);
-                loadingIndicator.classList.add('hidden');
+                const results = evaluateEssay(essayText, keyPoints);
+                loadingIndicator.style.display = 'none';
                 resultsDiv.classList.remove('hidden');
 
                 traitResultsDiv.innerHTML = '';
@@ -324,11 +364,26 @@
                 }
 
                 const averageScore = overallScore / count;
-                const overallGradeElement = document.getElementById('overallGrade');
                 overallGradeElement.textContent = `Overall Score: ${averageScore.toFixed(1)} / 6.0`;
-            }, 500); // Simulate a short delay for analysis
+            }, 500);
+        });
+
+        // Accordion functionality
+        document.querySelectorAll('.accordion-header').forEach(header => {
+            header.addEventListener('click', () => {
+                const accordionItem = header.parentElement;
+                const content = accordionItem.querySelector('.accordion-content');
+                const arrow = header.querySelector('.accordion-arrow');
+
+                if (content.style.maxHeight) {
+                    content.style.maxHeight = null;
+                    arrow.classList.remove('open');
+                } else {
+                    content.style.maxHeight = content.scrollHeight + 'px';
+                    arrow.classList.add('open');
+                }
+            });
         });
     </script>
 </body>
 </html>
-
